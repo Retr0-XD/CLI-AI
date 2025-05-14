@@ -10,6 +10,7 @@ import system.SystemExecutor;
 import safety.SafetyChecker;
 import java.util.Arrays;
 
+@CommandLine.Command(name = "sysai", mixinStandardHelpOptions = true, description = "System-Aware AI CLI Assistant")
 public class Main implements Runnable {
     private static final String CONFIG_PATH = System.getProperty("user.home") + "/.sysai_config.json";
 
