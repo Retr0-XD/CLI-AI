@@ -3,23 +3,20 @@ package system;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class SystemExecutor {
     public static String executeCommand(List<String> command) {
-        StringBuilder output = new StringBuilder();
         try {
-            ProcessBuilder pb = new ProcessBuilder(command);
-            pb.redirectErrorStream(true);
-            Process process = pb.start();
+            ProcessBuilder builder = new ProcessBuilder(command);
+            builder.redirectErrorStream(true);
+            Process process = builder.start();
             BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            String line;
-            while ((line = reader.readLine()) != null) {
-                output.append(line).append("\n");
-            }
+            String output = reader.lines().collect(Collectors.joining("\n"));
             process.waitFor();
+            return output;
         } catch (Exception e) {
-            output.append("[ERROR] ").append(e.getMessage());
+            return "Error executing command: " + e.getMessage();
         }
-        return output.toString();
     }
 }

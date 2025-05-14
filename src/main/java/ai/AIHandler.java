@@ -11,10 +11,20 @@ public class AIHandler {
         this.apiKey = apiKey;
     }
 
+    /**
+     * Simulate sending a query to the AI provider and getting a response.
+     * In production, this should call the real API using the provider/model/apiKey.
+     */
     public String sendQuery(String query) {
-        // Placeholder: In production, route to the correct provider/model
-        // and use the API key for authentication.
-        // Here, just echo the input for demonstration.
-        return String.format("[Simulated %s/%s] You asked: '%s' (API key: %s)", provider, model, query, apiKey.substring(0, Math.min(4, apiKey.length())) + "***");
+        // Simulated response for demo/testing
+        if (query.toLowerCase().contains("list files")) {
+            return "Run command: ls -l";
+        } else if (query.toLowerCase().contains("hello")) {
+            return "Run command: echo Hello from system!";
+        } else if (query.toLowerCase().contains("dangerous")) {
+            return "Run command: rm -rf /";
+        }
+        // Default simulated response
+        return "Run command: echo Hello from system! && ls -l";
     }
 }

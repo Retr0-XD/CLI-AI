@@ -1,15 +1,18 @@
 package safety;
 
-import java.util.Arrays;
-import java.util.List;
-
 public class SafetyChecker {
-    private static final List<String> DANGEROUS_COMMANDS = Arrays.asList(
-        "rm", "dd", "mkfs", ":(){:|:&};:", "shutdown", "reboot", "init 0", ":(){ :|:& };:", "poweroff"
-    );
+    // List of dangerous command patterns (expand as needed)
+    private static final String[] DANGEROUS_KEYWORDS = {
+        "rm -rf /", "dd if=", ":(){:|:&};:", "mkfs", "shutdown", "reboot", ":(){:|:&};:", "> /dev/sda", "kill -9 1"
+    };
 
     public static boolean isDangerous(String command) {
         String lower = command.toLowerCase();
-        return DANGEROUS_COMMANDS.stream().anyMatch(lower::contains);
+        for (String keyword : DANGEROUS_KEYWORDS) {
+            if (lower.contains(keyword)) {
+                return true;
+            }
+        }
+        return false;
     }
 }
