@@ -1,0 +1,38 @@
+name: Build System-Aware AI CLI Assistant
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Build with Maven
+        run: mvn clean package --batch-mode
+
+      - name: Archive production JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: system-ai-cli-jar
+          path: target/system-ai-cli-1.0.0.jar
+
+      - name: Archive shaded JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: system-ai-cli-shaded-jar
+          path: target/system-ai-cli-1.0.0-shaded.jar
+
+      - name: Run tests
+        run: mvn test
