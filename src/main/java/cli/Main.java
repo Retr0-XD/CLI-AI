@@ -65,10 +65,8 @@ public class Main implements Runnable {
             String response = aiHandler.sendQuery(query);
             System.out.println("AI: " + response);
 
-            // Example: Parse commands from AI response (simulate for now)
             if (response.toLowerCase().contains("run command")) {
-                // Simulate extracting multiple commands from AI response
-                String[] commands = {"echo Hello from system!", "ls -l"}; // Example commands
+                String[] commands = {"echo Hello from system!", "ls -l"};
                 for (String command : commands) {
                     if (SafetyChecker.isDangerous(command)) {
                         System.out.println("[WARNING] This command is considered dangerous: " + command);
