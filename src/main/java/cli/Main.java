@@ -67,8 +67,14 @@ public class Main implements Runnable {
             System.out.println("AI: " + response);
 
             if (response.toLowerCase().contains("run command")) {
-                String[] commands = {"echo Hello from system!", "ls -l"};
+                String[] parts = response.split("Explanation:");
+                String commandText = parts[0].substring(parts[0].indexOf(":") + 1).trim();
+                String explanation = parts.length > 1 ? parts[1].trim() : "No explanation provided.";
+                String[] commands = commandText.split("&&|\n");
                 for (String command : commands) {
+                    command = command.trim();
+                    if (command.isEmpty()) continue;
+                    System.out.println("Explanation: " + explanation);
                     if (SafetyChecker.isDangerous(command)) {
                         System.out.println("[WARNING] This command is considered dangerous: " + command);
                         System.out.print("Do you want to proceed? (yes/no): ");
