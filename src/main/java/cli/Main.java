@@ -19,6 +19,11 @@ public class Main implements Runnable {
         Scanner scanner = new Scanner(System.in);
         JSONObject config = loadConfig();
         boolean configChanged = false;
+        boolean initialDetailsSent = false;
+        String osType = System.getProperty("os.name");
+        String shell = System.getenv("SHELL");
+        if (shell == null) shell = "bash";
+        String systemDetails = "OS: " + osType + ", Shell: " + shell;
 
         if (config == null) {
             config = new JSONObject();
@@ -56,6 +61,56 @@ public class Main implements Runnable {
                 config.remove("model");
                 config.remove("apiKey");
                 configChanged = true;
+                continue;
+            }
+            AIHandler aiHandler = new AIHandler(
+                config.getString("provider"),
+                config.getString("model"),
+                config.getString("apiKey")
+            );
+            if (!initialDetailsSent) {
+                // Ask AI: What commands should I run to gather system details for your task?
+                String askForCommands = "I want to accomplish: '" + query + "'. What bash commands should I run to collect all the system details you need? Please reply with only the commands, separated by newlines, and a short explanation for each.";
+                String aiResponse = aiHandler.sendQuery(askForCommands);
+                System.out.println("AI: " + aiResponse);
+                // Extract commands (assume each line is a command or explanation)
+                String[] lines = aiResponse.split("\\n");
+                for (String line : lines) {
+                    String cmd = line.trim();
+                    if (cmd.isEmpty() || cmd.toLowerCase().contains("explanation")) continue;
+                    System.out.println("Executing: " + cmd);
+                    String output = SystemExecutor.executeCommand(Arrays.asList(cmd.split(" ")));
+                    System.out.println(output);
+                    systemDetails += "\nCommand: " + cmd + "\nOutput: " + output;
+                }
+                // Now send the system details and user goal to the AI
+                String detailsPrompt = "Here are my system details and outputs of your requested commands:\n" + systemDetails + "\nNow, what bash commands should I run to accomplish: '" + query + "'? Please reply with commands and explanations.";
+                String response = aiHandler.sendQuery(detailsPrompt);
+                System.out.println("AI: " + response);
+                initialDetailsSent = true;
+                // Continue to normal command execution below
+                if (response.toLowerCase().contains("run command")) {
+                    String[] parts = response.split("Explanation:");
+                    String commandText = parts[0].substring(parts[0].indexOf(":") + 1).trim();
+                    String explanation = parts.length > 1 ? parts[1].trim() : "No explanation provided.";
+                    String[] commands = commandText.split("&&|\n");
+                    for (String command : commands) {
+                        command = command.trim();
+                        if (command.isEmpty()) continue;
+                        System.out.println("Explanation: " + explanation);
+                        if (SafetyChecker.isDangerous(command)) {
+                            System.out.println("[WARNING] This command is considered dangerous: " + command);
+                            System.out.print("Do you want to proceed? (yes/no): ");
+                            if (!scanner.nextLine().trim().equalsIgnoreCase("yes")) {
+                                System.out.println("Command skipped.");
+                                continue;
+                            }
+                        }
+                        System.out.println("Executing: " + command);
+                        String output = SystemExecutor.executeCommand(Arrays.asList(command.split(" ")));
+                        System.out.println(output);
+                    }
+                }
                 continue;
             }
             AIHandler aiHandler = new AIHandler(
