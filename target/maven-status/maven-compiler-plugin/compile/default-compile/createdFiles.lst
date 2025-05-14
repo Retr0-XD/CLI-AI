@@ -1,2 +1,4 @@
+ai/AIHandler.class
 system/SystemExecutor.class
 safety/SafetyChecker.class
+cli/Main.class
