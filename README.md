@@ -13,6 +13,8 @@ A smart command-line tool that connects your system with an AI safely. It diagno
 * Gathers required data and sends to AI.
 * Receives step-by-step fix instructions.
 * Executes commands with user approval.
+* Supports both OpenAI and Google Gemini APIs.
+* Intelligent command parsing (handles quoted arguments properly).
 * Interrupts and handles errors safely.
 
 ---
@@ -23,7 +25,7 @@ A smart command-line tool that connects your system with an AI safely. It diagno
 | ------------- | ---------------------------------------- |
 | Language      | Java                                     |
 | CLI Framework | [Picocli](https://picocli.info) or JLine |
-| AI Backend    | OpenAI API                               |
+| AI Backend    | OpenAI API, Google Gemini API            |
 | Command Exec  | Java ProcessBuilder                      |
 | Config        | JSON or SQLite (optional)                |
 | Deployment    | GitHub Codespaces / Local                |

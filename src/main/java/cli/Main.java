@@ -9,6 +9,8 @@ import org.json.JSONObject;
 import system.SystemExecutor;
 import safety.SafetyChecker;
 import java.util.Arrays;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @CommandLine.Command(name = "sysai", mixinStandardHelpOptions = true, description = "System-Aware AI CLI Assistant")
 public class Main implements Runnable {
@@ -19,7 +21,6 @@ public class Main implements Runnable {
         Scanner scanner = new Scanner(System.in);
         JSONObject config = loadConfig();
         boolean configChanged = false;
-        boolean initialDetailsSent = false;
         String osType = System.getProperty("os.name");
         String shell = System.getenv("SHELL");
         if (shell == null) shell = "bash";
@@ -31,6 +32,165 @@ public class Main implements Runnable {
         }
 
         System.out.println("Welcome to System-Aware AI CLI Assistant!");
+        setupConfig(scanner, config);
+
+        while (true) {
+            System.out.println("\nCurrent provider: " + config.getString("provider") + ", model: " + config.getString("model"));
+            System.out.println("Type 'change' to update provider/model/API key, or 'exit' to quit.");
+            System.out.print("> ");
+            String query = scanner.nextLine();
+            if (query.equalsIgnoreCase("exit")) break;
+            if (query.equalsIgnoreCase("change")) {
+                config.remove("provider");
+                config.remove("model");
+                config.remove("apiKey");
+                configChanged = true;
+                setupConfig(scanner, config);
+                continue;
+            }
+
+            // Create AI handler with current config
+            AIHandler aiHandler = new AIHandler(
+                config.getString("provider"),
+                config.getString("model"),
+                config.getString("apiKey")
+            );
+
+            // Start the iterative process
+            boolean problemResolved = false;
+            StringBuilder contextHistory = new StringBuilder(systemDetails);
+            contextHistory.append("\nUser query: ").append(query);
+            
+            while (!problemResolved) {
+                // First, ask AI what commands are needed to understand the situation
+                String diagPrompt = "I need to " + query + ". What bash commands should I run to gather enough information about the current system state to understand the situation? Reply with ONLY the commands, one per line.";
+                String response = aiHandler.sendQuery(diagPrompt);
+                System.out.println("AI: I need to gather some information about your system. Running diagnostic commands...");
+                
+                // Execute diagnostic commands
+                String[] commands = extractCommands(response);
+                for (String command : commands) {
+                    if (command.trim().isEmpty()) continue;
+                    
+                    if (SafetyChecker.isDangerous(command)) {
+                        System.out.println("[WARNING] This diagnostic command is considered dangerous: " + command);
+                        System.out.print("Do you want to proceed? (yes/no): ");
+                        if (!scanner.nextLine().trim().equalsIgnoreCase("yes")) {
+                            System.out.println("Command skipped.");
+                            continue;
+                        }
+                    }
+                    
+                    System.out.println("Executing: " + command);
+                    String output = SystemExecutor.executeCommandString(command);
+                    System.out.println(output);
+                    contextHistory.append("\nCommand: ").append(command).append("\nOutput: ").append(output);
+                }
+                
+                // Now ask AI for solution based on gathered information
+                String solutionPrompt = "Based on the information gathered:\n" + contextHistory + 
+                    "\n\nWhat commands should I run to solve the following problem: " + query + 
+                    "\n\nProvide your response in this format:" +
+                    "\nCOMMAND: the_command_to_run" +
+                    "\nEXPLANATION: why this command helps" +
+                    "\n(repeat for each command)" +
+                    "\nFinally, end with either \"PROBLEM_RESOLVED: YES\" or \"PROBLEM_RESOLVED: NO, because...\"";
+                
+                response = aiHandler.sendQuery(solutionPrompt);
+                System.out.println("AI: " + response);
+                
+                // Execute solution commands
+                Pattern commandPattern = Pattern.compile("COMMAND:\\s*([^\\n]+)");
+                Pattern explanationPattern = Pattern.compile("EXPLANATION:\\s*([^\\n]+)");
+                Pattern resolvedPattern = Pattern.compile("PROBLEM_RESOLVED:\\s*(YES|NO[^\\n]*)");
+                
+                Matcher commandMatcher = commandPattern.matcher(response);
+                Matcher explanationMatcher = explanationPattern.matcher(response);
+                Matcher resolvedMatcher = resolvedPattern.matcher(response);
+                
+                while (commandMatcher.find()) {
+                    String command = commandMatcher.group(1).trim();
+                    String explanation = "No explanation provided";
+                    
+                    if (explanationMatcher.find()) {
+                        explanation = explanationMatcher.group(1).trim();
+                    }
+                    
+                    System.out.println("\nCommand: " + command);
+                    System.out.println("Explanation: " + explanation);
+                    
+                    if (SafetyChecker.isDangerous(command)) {
+                        System.out.println("[WARNING] This command is considered dangerous: " + command);
+                        System.out.print("Do you want to proceed? (yes/no): ");
+                        if (!scanner.nextLine().trim().equalsIgnoreCase("yes")) {
+                            System.out.println("Command skipped.");
+                            continue;
+                        }
+                    }
+                    
+                    System.out.print("Execute this command? (yes/no): ");
+                    if (scanner.nextLine().trim().equalsIgnoreCase("yes")) {
+                        System.out.println("Executing: " + command);
+                        String output = SystemExecutor.executeCommandString(command);
+                        System.out.println(output);
+                        contextHistory.append("\nExecuted: ").append(command).append("\nOutput: ").append(output);
+                    } else {
+                        System.out.println("Command skipped.");
+                        contextHistory.append("\nSkipped: ").append(command);
+                    }
+                }
+                
+                // Check if problem is resolved
+                if (resolvedMatcher.find()) {
+                    String resolution = resolvedMatcher.group(1);
+                    if (resolution.startsWith("YES")) {
+                        System.out.println("\nAI indicates the problem has been resolved.");
+                        problemResolved = true;
+                    } else {
+                        System.out.println("\nProblem not yet resolved: " + resolution);
+                        System.out.print("Continue with next iteration? (yes/no): ");
+                        if (!scanner.nextLine().trim().equalsIgnoreCase("yes")) {
+                            System.out.println("Process terminated by user.");
+                            problemResolved = true;
+                        }
+                    }
+                } else {
+                    System.out.print("\nAI didn't clearly indicate if the problem is resolved. Continue? (yes/no): ");
+                    if (!scanner.nextLine().trim().equalsIgnoreCase("yes")) {
+                        System.out.println("Process terminated by user.");
+                        problemResolved = true;
+                    }
+                }
+            }
+        }
+        
+        System.out.println("Goodbye!");
+    }
+    
+    private String[] extractCommands(String response) {
+        // Remove any explanatory text and keep only lines that look like commands
+        String[] lines = response.split("\\n");
+        StringBuilder commandsBuilder = new StringBuilder();
+        
+        for (String line : lines) {
+            line = line.trim();
+            // Skip empty lines or lines that are clearly not commands
+            if (line.isEmpty() || line.startsWith("Here") || line.startsWith("First") || 
+                line.contains("explanation") || line.startsWith("These commands") ||
+                line.startsWith("The following")) {
+                continue;
+            }
+            
+            // Only include lines that look like shell commands
+            if (line.matches("^[a-zA-Z0-9_.\\-/\\s]+.*")) {
+                commandsBuilder.append(line).append("\n");
+            }
+        }
+        
+        return commandsBuilder.toString().split("\\n");
+    }
+    
+    private void setupConfig(Scanner scanner, JSONObject config) {
         if (!config.has("provider") || !config.has("model") || !config.has("apiKey")) {
             System.out.println("Choose your AI provider:");
             System.out.println("1. OpenAI");
@@ -45,125 +205,8 @@ public class Main implements Runnable {
 
             System.out.print("Enter API key: ");
             config.put("apiKey", scanner.nextLine().trim());
-            configChanged = true;
+            saveConfig(config);
         }
-
-        if (configChanged) saveConfig(config);
-
-        while (true) {
-            if (!config.has("provider") || !config.has("model") || !config.has("apiKey")) {
-                System.out.println("Choose your AI provider:");
-                System.out.println("1. OpenAI");
-                System.out.println("2. Gemini");
-                System.out.print("Enter choice [1-2]: ");
-                int providerChoice = Integer.parseInt(scanner.nextLine().trim());
-                String provider = providerChoice == 2 ? "Gemini" : "OpenAI";
-                config.put("provider", provider);
-
-                System.out.print("Enter model name (e.g., gpt-4, gemini-pro): ");
-                config.put("model", scanner.nextLine().trim());
-
-                System.out.print("Enter API key: ");
-                config.put("apiKey", scanner.nextLine().trim());
-                configChanged = true;
-                saveConfig(config);
-            }
-            System.out.println("\nCurrent provider: " + config.getString("provider") + ", model: " + config.getString("model"));
-            System.out.println("Type 'change' to update provider/model/API key, or 'exit' to quit.");
-            System.out.print("> ");
-            String query = scanner.nextLine();
-            if (query.equalsIgnoreCase("exit")) break;
-            if (query.equalsIgnoreCase("change")) {
-                config.remove("provider");
-                config.remove("model");
-                config.remove("apiKey");
-                configChanged = true;
-                saveConfig(config);
-                continue;
-            }
-            AIHandler aiHandler = new AIHandler(
-                config.getString("provider"),
-                config.getString("model"),
-                config.getString("apiKey")
-            );
-            if (!initialDetailsSent) {
-                // Ask AI: What commands should I run to gather system details for your task?
-                String askForCommands = "I want to accomplish: '" + query + "'. What bash commands should I run to collect all the system details you need? Please reply with only the commands, separated by newlines.";
-                String aiResponse = aiHandler.sendQuery(askForCommands);
-                System.out.println("AI: " + aiResponse);
-                // Extract commands (each line is a command)
-                String[] lines = aiResponse.split("\\n");
-                StringBuilder detailsBuilder = new StringBuilder(systemDetails);
-                // Only execute lines that look like shell commands (skip plain text)
-                for (String line : lines) {
-                    String cmd = line.trim();
-                    if (cmd.isEmpty() || cmd.toLowerCase().contains("explanation") || !cmd.matches("[a-zA-Z0-9_./ -]+")) continue;
-                    System.out.println("Executing: " + cmd);
-                    String output = SystemExecutor.executeCommand(Arrays.asList(cmd.split(" ")));
-                    System.out.println(output);
-                    detailsBuilder.append("\nCommand: ").append(cmd).append("\nOutput: ").append(output);
-                }
-                // Now send the system details and user goal to the AI
-                String detailsPrompt = "Here are my system details and outputs of your requested commands:\n" + detailsBuilder + "\nNow, what bash commands should I run to accomplish: '" + query + "'? Please reply with commands and explanations.";
-                String response = aiHandler.sendQuery(detailsPrompt);
-                System.out.println("AI: " + response);
-                initialDetailsSent = true;
-                // Continue to normal command execution below
-                if (response.toLowerCase().contains("run command")) {
-                    String[] commandBlocks = response.split("Run command:");
-                    for (int i = 1; i < commandBlocks.length; i++) {
-                        String block = commandBlocks[i].trim();
-                        String[] parts = block.split("Explanation:");
-                        String commandText = parts[0].trim();
-                        String explanation = parts.length > 1 ? parts[1].trim() : "No explanation provided.";
-                        String[] commands = commandText.split("&&|\n");
-                        for (String command : commands) {
-                            command = command.trim();
-                            if (command.isEmpty()) continue;
-                            System.out.println("Explanation: " + explanation);
-                            if (SafetyChecker.isDangerous(command)) {
-                                System.out.println("[WARNING] This command is considered dangerous: " + command);
-                                System.out.print("Do you want to proceed? (yes/no): ");
-                                if (!scanner.nextLine().trim().equalsIgnoreCase("yes")) {
-                                    System.out.println("Command skipped.");
-                                    continue;
-                                }
-                            }
-                            System.out.println("Executing: " + command);
-                            String output = SystemExecutor.executeCommand(Arrays.asList(command.split(" ")));
-                            System.out.println(output);
-                        }
-                    }
-                }
-                continue;
-            }
-            String response = aiHandler.sendQuery(query);
-            System.out.println("AI: " + response);
-
-            if (response.toLowerCase().contains("run command")) {
-                String[] parts = response.split("Explanation:");
-                String commandText = parts[0].substring(parts[0].indexOf(":") + 1).trim();
-                String explanation = parts.length > 1 ? parts[1].trim() : "No explanation provided.";
-                String[] commands = commandText.split("&&|\n");
-                for (String command : commands) {
-                    command = command.trim();
-                    if (command.isEmpty()) continue;
-                    System.out.println("Explanation: " + explanation);
-                    if (SafetyChecker.isDangerous(command)) {
-                        System.out.println("[WARNING] This command is considered dangerous: " + command);
-                        System.out.print("Do you want to proceed? (yes/no): ");
-                        if (!scanner.nextLine().trim().equalsIgnoreCase("yes")) {
-                            System.out.println("Command skipped.");
-                            continue;
-                        }
-                    }
-                    System.out.println("Executing: " + command);
-                    String output = SystemExecutor.executeCommand(Arrays.asList(command.split(" ")));
-                    System.out.println(output);
-                }
-            }
-        }
-        System.out.println("Goodbye!");
     }
 
     private JSONObject loadConfig() {

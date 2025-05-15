@@ -1,3 +1,4 @@
 cli/MainTest.class
+ai/AIHandlerTest.class
 safety/SafetyCheckerTest.class
 system/SystemExecutorTest.class

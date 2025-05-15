@@ -46,6 +46,25 @@ java -jar target/system-ai-cli-1.0.0-shaded.jar
 - Type `change` to update provider/model/API key.
 - Type `exit` to quit.
 
+### Gemini API Usage
+When using Google's Gemini API:
+- You'll need a valid API key from Google AI Studio or Google Cloud.
+- If you enter just "gemini" as the model name, it will automatically be corrected to "gemini-pro".
+- Similarly, "gemini-1.5" will be corrected to "gemini-1.5-pro".
+- The tool handles the proper formatting of requests to the Gemini API.
+
+### Command Parsing
+The tool uses intelligent command parsing to handle:
+- Commands with quoted arguments (both single and double quotes)
+- Commands with spaces in arguments
+- Properly escaped characters
+
+For example, the following commands will be parsed correctly:
+```
+ls -l "/path with spaces"
+find . -name "*.txt" -exec echo "Found: {}" \;
+```
+
 ### Example Session
 ```
 Welcome to System-Aware AI CLI Assistant!
