@@ -10,14 +10,13 @@ public class AIHandlerTest {
         // Test automatic correction of model name
         AIHandler handler = new AIHandler("Gemini", "gemini", "fake-api-key");
         
-        // Unable to directly test API call without real API key, but we can indirectly
-        // test by checking the class variables or using reflection. For now, we'll just
-        // check that the handler was created properly.
+        // With our enhanced implementation, we now correct the model name internally
         assertEquals("Gemini", handler.getProvider());
-        assertEquals("gemini", handler.getModel());
+        assertEquals("gemini-pro", handler.getModel());
         
-        // Note: In a real test, you would mock the API call and verify the actual model
-        // used in the request is "gemini-pro" not "gemini"
+        // Test OpenAI model correction
+        AIHandler openAIHandler = new AIHandler("OpenAI", "gpt4", "fake-api-key");
+        assertEquals("gpt-4", openAIHandler.getModel());
     }
     
     @Test
@@ -33,6 +32,6 @@ public class AIHandlerTest {
         // Test unknown provider
         AIHandler unknownHandler = new AIHandler("Unknown", "model", "fake-api-key");
         String response = unknownHandler.sendQuery("test");
-        assertTrue(response.startsWith("Unknown provider:"));
+        assertTrue(response.startsWith("Unknown provider:"), "Expected unknown provider message");
     }
 }

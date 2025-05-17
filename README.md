@@ -15,7 +15,15 @@ A smart command-line tool that connects your system with an AI safely. It diagno
 * Executes commands with user approval.
 * Supports both OpenAI and Google Gemini APIs.
 * Intelligent command parsing (handles quoted arguments properly).
+* Color-coded terminal output for better readability.
+* Enhanced safety features with detailed warnings.
+* Improved command output formatting.
 * Interrupts and handles errors safely.
+* Command timeout protection.
+* Auto-correction of model names.
+* Comprehensive dangerous command detection.
+* Purpose explanations for diagnostic commands.
+* Better handling of shell operators (pipes, redirects).
 
 ---
 
