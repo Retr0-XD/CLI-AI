@@ -4,6 +4,8 @@ A smart command-line tool that connects your system with an AI safely. It diagno
 
 > ⚠️ All commands are confirmed by the user before execution. High-risk commands are flagged with a warning.
 
+![CLI Demo Screenshot]({10B4EB0D-B3EA-43CE-A77A-8F23C43AEF40}.png)
+
 ---
 
 ## ✨ Features

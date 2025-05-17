@@ -4,6 +4,8 @@
 
 The System-Aware AI CLI Assistant has been significantly enhanced to provide a better diagnostic and problem-solving workflow. The following improvements have been made to make the tool more robust, user-friendly, and safe.
 
+![Solution Phase with Safety Warnings]({CE07E0F5-15FD-4C3E-920D-7950A24F8648}.png)
+
 ## Major Improvements
 
 ### 1. Enhanced Diagnostic Workflow

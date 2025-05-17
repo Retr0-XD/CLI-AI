@@ -15,6 +15,8 @@ A production-ready Java CLI tool that connects to AI providers (OpenAI, Gemini, 
 - JUnit tests for core components
 - GitHub Actions pipeline for CI/CD
 
+![Diagnostic Phase]({31FA983F-0B92-4A17-8BC3-E510E7413985}.png)
+
 ## Getting Started
 
 ### Prerequisites
@@ -58,6 +60,17 @@ java -jar target/system-ai-cli-1.0.0-shaded.jar
 - The AI will indicate whether the problem is resolved or not.
 - Type `change` to update provider/model/API key.
 - Type `exit` to quit.
+
+## Example Screenshots
+
+### Diagnostic Phase
+![Diagnostic Phase]({31FA983F-0B92-4A17-8BC3-E510E7413985}.png)
+
+### Solution Phase with Safety Warnings
+![Solution Phase]({CE07E0F5-15FD-4C3E-920D-7950A24F8648}.png)
+
+### Full Workflow Example
+![CLI Demo]({10B4EB0D-B3EA-43CE-A77A-8F23C43AEF40}.png)
 
 ### Gemini API Usage
 When using Google's Gemini API:
@@ -132,6 +145,19 @@ PROBLEM_RESOLVED: YES
 > exit
 Goodbye!
 ```
+
+## Safety Features
+
+The System-Aware AI CLI Assistant includes comprehensive safety checks to prevent potentially dangerous commands from being executed accidentally:
+
+![Safety Warnings]({CE07E0F5-15FD-4C3E-920D-7950A24F8648}.png)
+
+- **Dangerous Command Detection**: The CLI uses pattern matching and regex to identify potentially harmful commands.
+- **Detailed Explanations**: When a dangerous command is detected, the CLI provides a specific reason why it's considered dangerous.
+- **Double Confirmation**: Dangerous commands require two confirmations - first acknowledging the risk, then explicitly approving execution.
+- **System Directory Protection**: Special protection for critical system directories like `/bin`, `/etc`, `/boot`, etc.
+- **Sensitive File Detection**: Additional warnings when modifying important system files like `/etc/passwd` or `/etc/fstab`.
+- **Network Security**: Detection of commands that might expose the system to network risks.
 
 ## Testing
 
